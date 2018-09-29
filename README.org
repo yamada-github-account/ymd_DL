@@ -1,0 +1,39 @@
+* ymd_DL
+
+Deep Learning Library
+
+** Requirement
+- [[https://github.com/yamada-github-account/ymd_util][ymd_util]]
+  - zip.hh
+  - (MNIST.hh)
+- C++20 compiler for MNIST.hh
+  - std::endian
+- C++17 compiler
+  - structured bindings
+  - fold expression
+
+** Usage
+1. Include "DL_core.hh" (and other headers)
+2. Create Network by ">>" operator
+   - ~auto DL = ymd::InputLayer<double>{5} >> ymd::ReLU{10} >>
+     ymd::SoftMax_CrossEntropy{5};~
+3. Back Propagete by "<<" operator
+   - ~DL << std::make_tuple(data,label)~
+4. Update
+   - ~DL.Update(eps,L1,L2)~
+
+
+** Note
+- Multiple Back Propagation without Update sum up gradients.
+- Weight Initialization
+  - He Normalization (before ReLU)
+  - Glorot Normalization (before Sigmoid, Identity_SquareError, and
+    SoftMax_CrossEntropy)
+- No adaptive gradient methods (AdaGrad, RMSProp, Adam, etc.)
+- No GPU acceleration
+
+
+** Test Environment
+- Mac OS X 10.13.6
+- g++ (MacPorts gcc8 8.2.0_0) 8.2.0
+- g++ -O3 -march=native -Wa,-q -fdiagnostics-color=auto -std=c++2a
