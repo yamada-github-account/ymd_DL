@@ -10,6 +10,7 @@
 #include <iterator>
 #include <tuple>
 #include <limits>
+#include <random>
 
 #include "zip.hh"
 
@@ -89,6 +90,9 @@ namespace ymd {
     inline auto Wend  (){ return value.end() - next_size; }
     inline auto Bbegin(){ return value.end() - next_size; }
     inline auto Bend  (){ return value.end(); }
+    inline auto PrevSize() const { return prev_size; }
+    inline auto NextSize() const { return next_size; }
+    inline auto Size() const { return std::make_tuple(prev_size,next_size); }
 
     template<typename F> inline auto for_each_prev_next(F&& f){
       for(auto next_i = 0ul; next_i < next_size; ++next_i)
@@ -178,6 +182,12 @@ namespace ymd {
 
     void SetNextLayer(std::size_t next_size){
       weight_bias = WeightBias<value_type>{layer.size,next_size};
+    }
+
+    void SetNextLayer(std::size_t next_size,
+		      std::function<void(WeightBias<value_type>&)> initializer){
+      SetNextLayer(next_size);
+      initializer(weight_bias);
     }
 
     friend inline auto operator>>(const layer_type& u,NonOutputLayer<ValueType>& l){
@@ -289,15 +299,26 @@ namespace ymd {
     auto Loss(const layer_type& real){
       return std::get<sizeof...(Layers)-1>(layers).Loss(real);
     }
+
     auto Loss(layer_type input, const layer_type& real){
       input >> (*this);
       return Loss(real);
     }
 
+    auto Loss(const std::vector<layer_type>& inputs,
+	      const std::vector<layer_type>& reals){
+      value_type loss = 0.0;
+      for(auto&& [input,real]: ymd::zip(inputs,reals)){
+	loss += Loss(input,real);
+      }
+      return loss;
+    }
+
     auto AddLayer(std::size_t next_size,
 		  std::function<value_type(value_type)> activate,
-		  std::function<value_type(value_type)> differentiate){
-      std::get<sizeof...(Layers)-1>(layers).SetNextLayer(next_size);
+		  std::function<value_type(value_type)> differentiate,
+		  std::function<void(WeightBias<value_type>&)> initializer){
+      std::get<sizeof...(Layers)-1>(layers).SetNextLayer(next_size,initializer);
 
       auto new_layer = Layer<value_type>{next_size,
 					 [=](auto u){
@@ -316,8 +337,9 @@ namespace ymd {
     auto AddOutputLayer(std::size_t next_size,
 			std::function<layer_type(layer_type)> activate,
 			std::function<value_type(layer_type,layer_type)> loss,
-			std::function<layer_type(layer_type,layer_type)> diff){
-      std::get<sizeof...(Layers)-1>(layers).SetNextLayer(next_size);
+			std::function<layer_type(layer_type,layer_type)> diff,
+			std::function<void(WeightBias<value_type>&)> initializer){
+      std::get<sizeof...(Layers)-1>(layers).SetNextLayer(next_size,initializer);
       auto new_layer = OutputLayer<value_type>{next_size,activate,loss,diff};
 
       using NN = NeuralNet<Layers...,decltype(new_layer)>;
@@ -342,8 +364,10 @@ namespace ymd {
     using value_type = ValueType;
     std::size_t size;
 
-    template<typename A,typename D> auto AddLayer(std::size_t next_size,
-						  A activate,D differentiate){
+    template<typename A,typename D>
+    auto AddLayer(std::size_t next_size,
+		  A activate,D differentiate,
+		  std::function<void(WeightBias<value_type>&)> initializer){
       auto layer1 = Layer<value_type>{size,
 				      [=](auto u){ return u; },
 				      [=](auto z){
@@ -363,11 +387,65 @@ namespace ymd {
 
       auto layers = std::make_tuple(NonOutputLayer{layer1},
 				    NonOutputLayer{layer2});
-      std::get<0>(layers).SetNextLayer(next_size);
+      std::get<0>(layers).SetNextLayer(next_size,initializer);
+
+      return NeuralNet{layers};
+    }
+
+    template<typename A,typename L,typename D>
+    auto AddOutputLayer(std::size_t next_size,
+			A activate,L loss,D differentiate,
+			std::function<void(WeightBias<value_type>&)> initializer){
+      auto layer1 = Layer<value_type>{size,
+				      [=](auto u){ return u; },
+				      [=](auto z){
+					for(auto& ze: z){ ze = value_type{1}; }
+					return z;
+				      }};
+
+      auto layer2 = OutputLayer<value_type>{next_size,activate,loss,differentiate};
+
+      auto layers = std::make_tuple(NonOutputLayer{layer1},layer2);
+      std::get<0>(layers).SetNextLayer(next_size,initializer);
 
       return NeuralNet{layers};
     }
   };
+
+  template<typename ValueType>
+  inline auto NormWeightZeroBias(ValueType mean,ValueType std){
+    using value_type = ValueType;
+    using Gauss = std::normal_distribution<value_type>;
+
+    return [=](WeightBias<value_type>& wb){
+	     std::generate(wb.Wbegin(),wb.Wend(),
+			   [g = std::mt19937{std::random_device{}()},
+			    d = Gauss(mean,std)]() mutable { return d(g); });
+	     std::fill(wb.Bbegin(),wb.Bend(),value_type{0});
+	   };
+
+  }
+
+  template<typename ValueType>
+  inline auto HeNorm(){
+    using value_type = ValueType;
+
+    return [=](WeightBias<value_type>& wb){
+	     auto he_mean = value_type{0};
+	     auto he_std = value_type{std::sqrt(2.0/(wb.PrevSize()))};
+	     ymd::NormWeightZeroBias(he_mean,he_std)(wb);
+	   };
+  }
+
+  template<typename ValueType> inline auto GlorotNorm(){
+    using value_type = ValueType;
+
+    return [=](WeightBias<value_type>& wb){
+	     auto glorot_mean = value_type{0};
+	     auto glorot_std=value_type{std::sqrt(2.0/(wb.PrevSize()+wb.NextSize()))};
+	     ymd::NormWeightZeroBias(glorot_mean,glorot_std)(wb);
+	   };
+  }
 
   struct ReLU { std::size_t size; };
   template<typename NN> inline auto operator>>(NN nn,ReLU relu){
@@ -376,16 +454,19 @@ namespace ymd {
     constexpr const auto one = value_type{1};
     return nn.AddLayer(relu.size,
 		       [=](value_type u){ return std::max(zero,u); },
-		       [=](value_type z){ return std::signbit(z) ? zero : one; });
+		       [=](value_type z){ return std::signbit(z) ? zero : one; },
+		       ymd::HeNorm<value_type>());
   }
 
   struct Sigmoid { std::size_t size; };
   template<typename NN> inline auto operator>>(NN nn,Sigmoid sigmoid){
     using value_type = typename NN::value_type;
+    using Gauss = std::normal_distribution<value_type>;
     constexpr const auto one = value_type{1};
     return nn.AddLayer(sigmoid.size,
 		       [=](value_type u){ return one/(one + std::exp(-u)); },
-		       [=](value_type z){ return z*(one - z); });
+		       [=](value_type z){ return z*(one - z); },
+		       ymd::GlorotNorm<value_type>());
   }
 
   struct Identity_SquareError { std::size_t size; };
@@ -404,7 +485,8 @@ namespace ymd {
 			     [](layer_type z,layer_type real){
 			       for(auto&& [ze,r]: ymd::zip(z,real)){ ze -= r; }
 			       return z;
-			     });
+			     },
+			     ymd::GlorotNorm<value_type>());
   }
 
   struct SoftMax_CrossEntropy { std::size_t size; };
@@ -439,7 +521,8 @@ namespace ymd {
 			     [](layer_type z,layer_type real){
 			       for(auto&& [ze,r]: ymd::zip(z,real)){ ze -= r; }
 			       return z;
-			     });
+			     },
+			     ymd::GlorotNorm<value_type>());
   }
 
 } // namespace ymd
