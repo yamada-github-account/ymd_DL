@@ -13,9 +13,10 @@
 #include <random>
 
 #include "zip.hh"
+#include "tuple_zip.hh"
+#include "Adam.hh"
 
 namespace ymd {
-
   template<typename ValueType>
   struct Layer {
     using value_type = ValueType;
@@ -65,13 +66,30 @@ namespace ymd {
   private:
     std::size_t prev_size;
     std::size_t next_size;
+    std::size_t batch_size;
     layer_type value;
     layer_type diff_value;
+
+    template<typename Adaptive,
+	     std::enable_if_t<!std::is_same_v<std::remove_reference_t<Adaptive>,
+					      value_type>,std::nullptr_t> = nullptr>
+    auto update_impl(Adaptive& a,value_type L1,value_type L2){
+      for(auto&& [a_,wb,diff_wb]: ymd::zip(a,value,diff_value)){
+	wb -= a_(std::exchange(diff_wb,value_type{0}) + std::copysign(L1,wb) + L2*wb);
+      }
+    }
+
+    auto update_impl(value_type eps,value_type L1,value_type L2){
+      for(auto&& [wb,diff_wb]: ymd::zip(value,diff_value)){
+	wb -= eps*(std::exchange(diff_wb,value_type{0}) +
+		   std::copysign(L1,wb) + L2*wb);
+      }
+    }
 
   public:
     WeightBias() = default;
     WeightBias(std::size_t prev_size,std::size_t next_size)
-      : prev_size(prev_size), next_size(next_size),
+      : prev_size(prev_size), next_size(next_size),batch_size{0},
 	value((prev_size+1)*next_size),
 	diff_value((prev_size+1)*next_size){}
     WeightBias(const WeightBias&) = default;
@@ -90,9 +108,10 @@ namespace ymd {
     inline auto Wend  (){ return value.end() - next_size; }
     inline auto Bbegin(){ return value.end() - next_size; }
     inline auto Bend  (){ return value.end(); }
-    inline auto PrevSize() const { return prev_size; }
-    inline auto NextSize() const { return next_size; }
-    inline auto Size() const { return std::make_tuple(prev_size,next_size); }
+    inline auto PrevSize() const noexcept { return prev_size; }
+    inline auto NextSize() const noexcept { return next_size; }
+    inline auto Size() const noexcept { return std::make_tuple(prev_size,next_size); }
+    inline auto ParameterSize() const { return value.size(); }
 
     template<typename F> inline auto for_each_prev_next(F&& f){
       for(auto next_i = 0ul; next_i < next_size; ++next_i)
@@ -113,6 +132,8 @@ namespace ymd {
     }
 
     auto BackPropagate(const layer_type& prev, const layer_type& df_du){
+      ++batch_size;
+
       for_each_next([&](auto next_i){ diff_value[Bindex(next_i)] += df_du[next_i]; });
 
       for_each_prev_next([&](auto prev_i,auto next_i)
@@ -125,11 +146,18 @@ namespace ymd {
       return df_dprev_z;
     }
 
-    auto Update(value_type eps,value_type L1,value_type L2){
-      for(auto&& [wb,diff_wb]: ymd::zip(value,diff_value)){
-	wb -= eps*(std::exchange(diff_wb,value_type{0}) +
-		   std::copysign(L1,wb) + L2*wb);
+    template<typename Adaptive> auto Update(Adaptive& a,value_type L1,value_type L2){
+      if(batch_size){
+	// Normalize by batch_size
+	if(batch_size > 1ul){
+	  std::for_each(diff_value.begin(),diff_value.end(),
+			[scale=1.0/batch_size](auto& v){ v *= scale; });
+	}
+
+	batch_size = 0ul;
+	update_impl(a,L1,L2);
       }
+      return value.size();
     }
 
     friend inline std::ostream& operator<<(std::ostream& os,
@@ -205,10 +233,11 @@ namespace ymd {
     }
 
     template<typename F> std::size_t apply(F& f){ return weight_bias.apply(f); }
-    std::size_t update(value_type eps,value_type L1,value_type L2){
-      weight_bias.Update(eps,L1,L2);
-      return 1ul;
+    template<typename Adaptive> auto update(Adaptive& a,value_type L1,value_type L2){
+      return weight_bias.Update(a,L1,L2);
     }
+
+    auto ParameterSize() const noexcept { return weight_bias.ParameterSize(); }
   };
 
   template<typename ValueType>
@@ -261,7 +290,10 @@ namespace ymd {
     }
 
     template<typename F> std::size_t apply(F& f){ return 0ul; }
-    std::size_t update(value_type,value_type,value_type){ return 0ul; }
+    template<typename Adaptive> auto update(Adaptive,value_type,value_type){
+      return 0ul;
+    }
+    auto ParameterSize() const noexcept { return 0ul; }
   };
 
 
@@ -311,7 +343,7 @@ namespace ymd {
       for(auto&& [input,real]: ymd::zip(inputs,reals)){
 	loss += Loss(input,real);
       }
-      return loss;
+      return loss/(std::min(inputs.size(),reals.size()));
     }
 
     auto AddLayer(std::size_t next_size,
@@ -350,6 +382,14 @@ namespace ymd {
       std::apply([&](auto&...l){ (... + l.apply(f)); },layers);
     }
 
+    template<typename Adaptive,
+	     std::enable_if_t<!std::is_same_v<std::remove_reference_t<Adaptive>,
+					      value_type>,std::nullptr_t> = nullptr>
+    auto Update(Adaptive& a,value_type L1,value_type L2){
+      return ymd::zip_for_each([=](auto&& l,auto&& a_){ return l.update(a_,L1,L2); },
+			       layers,a);
+    }
+
     void Update(value_type eps,value_type L1,value_type L2){
       std::apply([=](auto&...l){ (... + l.update(eps,L1,L2)); },layers);
     }
@@ -357,6 +397,14 @@ namespace ymd {
     void DebugShow() const {
       std::cout << "DEBUG: show (saved) layer-z and weight and bias" << std::endl;
       std::apply([](auto&&...l){ (std::cout << ... << l) << std::endl; },layers);
+    }
+
+    template<typename Adaptive> auto MakeAdaptive(Adaptive a){
+      using Adaptive_type = std::vector<Adaptive>;
+      auto f = [=](auto&&...l){
+		 return std::make_tuple(Adaptive_type(l.ParameterSize(),a)...);
+	       };
+      return std::apply(f,layers);
     }
   };
 
@@ -524,6 +572,5 @@ namespace ymd {
 			     },
 			     ymd::GlorotNorm<value_type>());
   }
-
 } // namespace ymd
 #endif // YMD_DL_CORE

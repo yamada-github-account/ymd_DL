@@ -1,6 +1,7 @@
 #ifndef YMD_DL_UTIL_HH
 #define YMD_DL_UTIL_HH 1
 
+#include <iterator>
 #include <algorithm>
 #include <tuple>
 #include <type_traits>
@@ -30,8 +31,16 @@ namespace ymd {
   inline auto split_train_test(const Data& data,
 			       const Label& label,
 			       double train_rate = 0.7){
-    Data train_data{},test_data{};
-    Label train_label{},test_label{};
+    using std::begin;
+    using std::end;
+
+    using data_type =
+      std::vector<std::remove_cv_t<std::remove_reference_t<decltype(*begin(data))>>>;
+    using label_type =
+      std::vector<std::remove_cv_t<std::remove_reference_t<decltype(*begin(label))>>>;
+
+    data_type train_data{},test_data{};
+    label_type train_label{},test_label{};
 
     const auto data_size = data.size();
     const auto train_size = std::size_t(data.size() * train_rate);
@@ -43,8 +52,10 @@ namespace ymd {
 
     test_data.reserve(data_size-train_size);
     test_label.reserve(data_size-train_size);
-    std::copy(data.begin()+train_size,data.end(),std::back_inserter(test_data));
-    std::copy(label.begin()+train_size,label.end(),std::back_inserter(test_label));
+    std::copy(std::next(data.begin(),train_size),data.end(),
+	      std::back_inserter(test_data));
+    std::copy(std::next(label.begin(),train_size),label.end(),
+	      std::back_inserter(test_label));
 
     return std::make_tuple(train_data,train_label,test_data,test_label);
   }
