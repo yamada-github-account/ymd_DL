@@ -27,7 +27,7 @@ Deep Learning Library
   - He Normalization (before ReLU)
   - Glorot Normalization (before Sigmoid, Identity_SquareError, and
     SoftMax_CrossEntropy)
-- No adaptive gradient methods (AdaGrad, RMSProp, Adam, etc.)
+- Only Adam is implemented as Adaptive Gradient Update
 - No GPU acceleration
 
 
