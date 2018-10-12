@@ -4,9 +4,7 @@ Deep Learning Library
 
 ** Requirement
 - [[https://github.com/yamada-github-account/ymd_util][ymd_util]]
-  - zip.hh
-  - (MNIST.hh)
-- C++20 compiler for MNIST.hh
+- C++20 compiler for ymd_util/MNIST.hh
   - std::endian
 - C++17 compiler
   - structured bindings
