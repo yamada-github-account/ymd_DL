@@ -10,7 +10,7 @@ Deep Learning Library
   - structured bindings
   - fold expression
 
-** Usage
+** Simple Usage
 1. Include "DL_core.hh" (and other headers)
 2. Create Network by ">>" operator
    - ~auto DL = ymd::InputLayer<double>{5} >> ymd::ReLU{10} >>
