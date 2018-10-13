@@ -256,3 +256,39 @@ void f(T t){ }
 - Mac OS X 10.13.6
 - g++ (MacPorts gcc8 8.2.0_0) 8.2.0
 - g++ -O3 -march=native -Wa,-q -fdiagnostics-color=auto -std=c++2a
+
+* Future ToDo
+
+**  Convolutional Network and Batch Normalization
+Replacing =WeightBias= class, which manage affine conversion and its
+back propagation, can achieve convolutional network and batch
+normalization in terms of class architecture.
+
+In terms of implementation, there are some design choices:
+- Make =NonOutputLayer= class template of weight and bias type
+  (affine, convolutional, and batch normalization)
+  - Pros :: Reduce implementation outside weight and bias.
+  - Cons :: How to specify the template parameter in the simple API?
+- Make new class something like =NonOutputConvolutionalLayer=
+  - Pros :: (Maybe) Does not need complicated TMP.
+  - Cons :: Need to implement all the function in order to compatible
+            with =NonOutputLayer= class.
+
+
+** Save and Load Parameters
+Algorithms of serializing parameters and identifying the network shape
+are necessary.
+
+** SIMD or Parallel operation
+In C++17, parallel algorithm were standardized in STL, however, both gcc
+and clang have not implemented yet. (VC++ did.)
+
+Vectorize operation (SIMD) and parallel operation (multi thread) can be
+easily implemented as follows:
+#+BEGIN_SRC C++
+std::for_each(std::execution::par_unseq,v.begin(),v.end(),[](auto& v){ v *= 2; })
+#+END_SRC
+
+The first argument is execution policy to allow parallel and/or
+vectorize operation. Many functions in =<algorithm>=, =<numeric>=, and
+=<memory>= will be overloeaded parallel version.
