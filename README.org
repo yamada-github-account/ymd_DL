@@ -125,6 +125,60 @@ unpacked with the operator =...= like followings:
    - =(init + ... + v)= -> =((((init + v1) + v2) + v3) + ...)=
    - =(v + ... + init)= -> =(... + (v3 + (v4 + (v5 + init))))=
 
+
+
+*** TMP (template meta-programming) with SFINAE (substitution failuer is not an error)
+C# generics must run with all the possible type, however, C++ template
+does not have to. In C++, when a template is failed to instantiate,
+the template is simply removed overloaded function set without error.
+
+The ~type_traits~ header (from C++11) has many useful template classes
+such as =std::enable_if=, =std::common_type=, =std::is_same= and so
+on. (=XXX_t= classes and =XXX_v= classes are helper classes with are
+same with =XXX::type= and =XXX::value= respectively. (from C++14))
+
+
+Here is an exapmle from [[file:DL_core.hh]].
+
+#+BEGIN_SRC C++
+template<typename Adaptive,
+	 std::enable_if_t<!std::is_same_v<std::remove_reference_t<Adaptive>,
+					  value_type>,std::nullptr_t> = nullptr>
+auto Update(Adaptive& a,value_type L1,value_type L2){
+  return ymd::zip_for_each([=](auto&& l,auto&& a_){ return l.update(a_,L1,L2); },
+			   layers,a);
+}
+
+void Update(value_type eps,value_type L1,value_type L2){
+  std::apply([=](auto&...l){ (... + l.update(eps,L1,L2)); },layers);
+}
+#+END_SRC
+
+Because of back compatibility, when adaptive update is implemented,
+the original argument =value_type eps= must be accepted.
+
+When you call =DL.Update(0.01,0.0,0.0)=, the upper candidate template
+fails to instantiate because the deduced second template parameter,
+=std::enable_if_t<false>= is not implemented (Only
+=std::enable_if_t<true>= is implemented).
+
+**** =std::enable_if<bool,std::nullptr_t> = nullptr= idiom (for expert)
+The second template parameter of the =std::enable_if= is
+=std::enable_if::type= and the type of =std::enable_if::value=. We set
+=std::nullptr_t=, which is the type of =nullptr=, which prevent users
+to set some temlate parameter without intention. (We assume there are
+very rare case that users pass =nullptr= to template.)
+
+There is a similar idiom named enabler idiom as follows:
+#+BEGIN_SRC C++
+extern void* enabler;
+
+template<typename T,
+	 typename std::enable_if<std::is_integral<T>::value>::type*& = enabler>
+void f(T t){ }
+#+END_SRC
+
+
 ** Test Environment
 - Mac OS X 10.13.6
 - g++ (MacPorts gcc8 8.2.0_0) 8.2.0
