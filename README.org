@@ -81,6 +81,43 @@ generic labmda (from C++14), folding expression (from C++17), and so
 on, different classes with same name members can be treated like
 dynamic polymorphism.
 
+**** Apply function for all values in ~std::tuple<...>~
+Since values in ~std::tuple~ have different types, we cannot access
+them with access operator ~[]~.
+
+Here we achive with ~std::apply~ (from C++17), folding expression
+(C++17) and generic lambda (from C++14).  There are some examples from
+[[file:DL_core.hh]].
+
+
+Feed forward with operator =>>=.
+#+BEGIN_SRC C++
+friend auto operator>>(layer_type input,NeuralNet<Layers...>& nn){
+  return std::apply([&](auto&&...l){ return (input >> ... >> l); },nn.layers);
+}
+#+END_SRC
+
+Back propagete with operator =<<=.
+#+BEGIN_SRC C++
+auto operator<<(layer_type real){
+  std::apply([&](auto&&...l){ (l << ... << real); },layers);
+}
+#+END_SRC
+
+Call the =update= member function and sum up the return values.
+#+BEGIN_SRC C++
+void Update(value_type eps,value_type L1,value_type L2){
+  std::apply([=](auto&...l){ (... + l.update(eps,L1,L2)); },layers);
+}
+#+END_SRC
+
+The =std::apply= passes the values in =std::tuple= to function as
+arguments. Even though type and size of values are unknown, generic
+lambda with variadic template parameter (=[](auto...v){ }=) can take
+and all the values packed in the parameter. The packed parameters are
+unpacked with the operator =...=.
+
+
 
 ** Test Environment
 - Mac OS X 10.13.6
