@@ -115,9 +115,15 @@ The =std::apply= passes the values in =std::tuple= to function as
 arguments. Even though type and size of values are unknown, generic
 lambda with variadic template parameter (=[](auto...v){ }=) can take
 and all the values packed in the parameter. The packed parameters are
-unpacked with the operator =...=.
+unpacked with the operator =...= like followings:
 
-
+1. comma separated in function, constructor, and template argument
+   - =f(v...)= -> =f(v1,v2,v3,...)=.
+2. Sequential binary operation (fold expression)
+   - =(... + v)= -> =(((v1 + v2) + v3) + ...)=
+   - =(v + ...)= -> =(... + (v3 + (v4 + v5)))=
+   - =(init + ... + v)= -> =((((init + v1) + v2) + v3) + ...)=
+   - =(v + ... + init)= -> =(... + (v3 + (v4 + (v5 + init))))=
 
 ** Test Environment
 - Mac OS X 10.13.6
