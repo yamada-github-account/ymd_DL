@@ -85,7 +85,7 @@ managed together as =NonOutputLayer= class.
 In order to make API simple and recognizable as much as possible, we
 use operator overload.
 
-For network creation:
+***  Network creation
 #+BEGIN_SRC C++
 auto DL = ymd::InputLayer<double>{5} >> ymd::ReLU{10} >> ymd::SoftMax_CrossEntropy{5};
 #+END_SRC
