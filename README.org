@@ -96,6 +96,24 @@ information of the value type, and in the overloaded operator =>>= the
 information is extracted from already created =NeuralNet= class or the
 initial =ymd::InputLayer=.
 
+*** Back Propagation
+The operator =<<= looks like backward operation, so that I decided to
+use for back propagation. Since the back propagation requires both
+data and label, =std::tuple<Data,Label>= are used.
+
+#+BEGIN_SRC C++
+DL << std::make_tuple(data,label);
+#+END_SRC
+
+
+The =std::make_tuple= can be removed by using =ymd::zip= for data
+iteration. (See [[file:hello_polynomial.cc]])
+#+BEGIN_SRC C++
+for(auto&& DataLabel: ymd::zip(data,label)){
+  DL << DataLabel;
+}
+#+END_SRC
+
 
 ** structured binding
 
