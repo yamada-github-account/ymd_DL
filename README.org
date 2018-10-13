@@ -51,14 +51,15 @@ See [[file:hello_polynomial.cc][hello_polynomial.cc]]
 *** Class Archtecture
 [[file:class.png]]
 
-NeuralNet class has NonOutputLayer and OutputLayer. Theses layer
+=NeuralNet= class has NonOutputLayer and =OutputLayer=. Theses layer
 classes are stored with ~std::tuple<...>~ and managed by static polymorphism.
 
 
-NonOutputLayer class has Layer class and WeightBias class. Since the
+=NonOutputLayer= class has =Layer= class and =WeightBias= class. Since the
 back propagation of weights and biases require activated values as
 well as propagated gradient from the next layer, These 2 classes are
-managed together as NonOutputLayer class.
+managed together as =NonOutputLayer= class.
+
 
 
 ** Note
