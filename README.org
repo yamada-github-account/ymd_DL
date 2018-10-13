@@ -81,6 +81,12 @@ back propagation of weights and biases require activated values as
 well as propagated gradient from the next layer, These 2 classes are
 managed together as =NonOutputLayer= class.
 
+** API Design
+
+
+** structured binding
+
+
 ** Static Polymorphism
 In usual dynamic polymorphism, pointers to classes derived from a
 interface class are managed with unified way. This can be achived by
