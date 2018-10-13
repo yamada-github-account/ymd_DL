@@ -45,6 +45,15 @@ See [[file:hello_polynomial.cc][hello_polynomial.cc]]
   }
   #+END_SRC
 
+** Note
+- Multiple Back Propagation without Update sum up gradients.
+- Weight Initialization
+  - He Normalization (before ReLU)
+  - Glorot Normalization (before Sigmoid, Identity_SquareError, and
+    SoftMax_CrossEntropy)
+- Only Adam is implemented as Adaptive Gradient Update
+- No GPU acceleration
+
 
 ** Archtecture and Implement Techniques
 
@@ -71,15 +80,6 @@ By using =std::tuple= (from C++11), parameter pack (from C++11),
 generic labmda (from C++14), folding expression (from C++17), and so
 on, different classes with same name members can be treated like
 dynamic polymorphism.
-
-** Note
-- Multiple Back Propagation without Update sum up gradients.
-- Weight Initialization
-  - He Normalization (before ReLU)
-  - Glorot Normalization (before Sigmoid, Identity_SquareError, and
-    SoftMax_CrossEntropy)
-- Only Adam is implemented as Adaptive Gradient Update
-- No GPU acceleration
 
 
 ** Test Environment
