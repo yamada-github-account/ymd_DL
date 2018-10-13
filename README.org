@@ -60,7 +60,17 @@ back propagation of weights and biases require activated values as
 well as propagated gradient from the next layer, These 2 classes are
 managed together as =NonOutputLayer= class.
 
+*** Static Polymorphism
+In usual dynamic polymorphism, pointers to classes derived from a
+interface class are managed with unified way. This can be achived by
+virtual function, whose address is recorded in =vtable= in class
+instances and refered every time the function is called. This dynamic
+runtime method cannot be optimized by any compiler.
 
+By using =std::tuple= (from C++11), parameter pack (from C++11),
+generic labmda (from C++14), folding expression (from C++17), and so
+on, different classes with same name members can be treated like
+dynamic polymorphism.
 
 ** Note
 - Multiple Back Propagation without Update sum up gradients.
