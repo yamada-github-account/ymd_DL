@@ -48,7 +48,7 @@ See [[file:hello_polynomial.cc][hello_polynomial.cc]]
 
 ** Archtecture and Implement Techniques
 
-*** Archtecture
+*** Class Archtecture
 [[file:class.png]]
 
 NeuralNet class has NonOutputLayer and OutputLayer. Theses layer
