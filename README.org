@@ -11,6 +11,9 @@ Deep Learning Library
   - fold expression
 
 ** Simple Usage
+
+See [[file:hello_MNIST.cc][hello_MNIST.cc]]
+
 1. Include "DL_core.hh" (and other headers)
 2. Create Network by ">>" operator
    - ~auto DL = ymd::InputLayer<double>{5} >> ymd::ReLU{10} >>
@@ -20,6 +23,27 @@ Deep Learning Library
 4. Update
    - ~DL.Update(eps,L1,L2)~
 
+
+** Next Step
+
+See [[file:hello_polynomial.cc][hello_polynomial.cc]]
+
+- Spliting Train Test data ~ymd::split_train_test~
+  - You can take return values by structured binding
+    #+BEGIN_SRC C++
+    auto [train_X,train_y,test_X,test_y] = ymd::split_train_test(X,y,0.7);
+    #+END_SRC
+- Adaptive gradient manager with suitable shape can be made by ~NeuralNet::MakeAdaptive~
+- Shuffle data set and mini-batch operation can be achieved with range adaptors
+  #+BEGIN_SRC C++
+  for(auto&& Batch:
+	ymd::zip(train_data,train_label) |
+	ymd::adaptor::shuffle_view{} |
+	ymd::adaptor::sliding_window{batch_size,batch_size}){
+    for(auto&& DataLabel: Batch){ DL << DataLabel; }
+    DL.Update(adam,L1,L2);
+  }
+  #+END_SRC
 
 ** Note
 - Multiple Back Propagation without Update sum up gradients.
