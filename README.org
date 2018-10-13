@@ -3,7 +3,7 @@
 #+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
 #+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
 #+OPTIONS: timestamp:t title:t toc:t todo:t |:t
-#+TITLE: README
+#+TITLE: ymd_DL
 #+DATE: <2018-10-13 Sat>
 #+AUTHOR: Hiroyuki Yamada
 #+LANGUAGE: en
@@ -12,11 +12,9 @@
 #+CREATOR: Emacs 26.1 (Org mode 9.1.14)
 
 
-* ymd_DL
-
 Deep Learning Library
 
-** Requirement
+* Requirement
 - [[https://github.com/yamada-github-account/ymd_util][ymd_util]]
 - C++20 compiler for ymd_util/MNIST.hh
   - std::endian
@@ -24,7 +22,7 @@ Deep Learning Library
   - structured bindings
   - fold expression
 
-** Simple Usage
+* Simple Usage
 
 See [[file:hello_MNIST.cc][hello_MNIST.cc]]
 
@@ -38,7 +36,7 @@ See [[file:hello_MNIST.cc][hello_MNIST.cc]]
    - ~DL.Update(eps,L1,L2)~
 
 
-** Next Step
+* Next Step
 
 See [[file:hello_polynomial.cc][hello_polynomial.cc]]
 
@@ -59,7 +57,7 @@ See [[file:hello_polynomial.cc][hello_polynomial.cc]]
   }
   #+END_SRC
 
-** Note
+* Note
 - Multiple Back Propagation without Update sum up gradients.
 - Weight Initialization
   - He Normalization (before ReLU)
@@ -69,9 +67,9 @@ See [[file:hello_polynomial.cc][hello_polynomial.cc]]
 - No GPU acceleration
 
 
-** Archtecture and Implement Techniques
+* Archtecture and Implement Techniques
 
-*** Class Archtecture
+** Class Archtecture
 [[file:class.png]]
 
 =NeuralNet= class has NonOutputLayer and =OutputLayer=. Theses layer
@@ -83,7 +81,7 @@ back propagation of weights and biases require activated values as
 well as propagated gradient from the next layer, These 2 classes are
 managed together as =NonOutputLayer= class.
 
-*** Static Polymorphism
+** Static Polymorphism
 In usual dynamic polymorphism, pointers to classes derived from a
 interface class are managed with unified way. This can be achived by
 virtual function, whose address is recorded in =vtable= in class
@@ -95,7 +93,7 @@ generic labmda (from C++14), folding expression (from C++17), and so
 on, different classes with same name members can be treated like
 dynamic polymorphism.
 
-**** Apply function for all values in ~std::tuple<...>~
+*** Apply function for all values in ~std::tuple<...>~
 Since values in ~std::tuple~ have different types, we cannot access
 them with access operator ~[]~.
 
@@ -141,7 +139,7 @@ unpacked with the operator =...= like followings:
 
 
 
-*** TMP (template meta-programming) with SFINAE (substitution failuer is not an error)
+** TMP (template meta-programming) with SFINAE (substitution failuer is not an error)
 C# generics must run with all the possible type, however, C++ template
 does not have to. In C++, when a template is failed to instantiate,
 the template is simply removed overloaded function set without error.
@@ -176,7 +174,7 @@ fails to instantiate because the deduced second template parameter,
 =std::enable_if_t<false>= is not implemented (Only
 =std::enable_if_t<true>= is implemented).
 
-**** =std::enable_if<bool,std::nullptr_t> = nullptr= idiom (for expert)
+*** =std::enable_if<bool,std::nullptr_t> = nullptr= idiom (for expert)
 The second template parameter of the =std::enable_if= is
 =std::enable_if::type= and the type of =std::enable_if::value=. We set
 =std::nullptr_t=, which is the type of =nullptr=, which prevent users
@@ -193,7 +191,7 @@ void f(T t){ }
 #+END_SRC
 
 
-** Test Environment
+* Test Environment
 - Mac OS X 10.13.6
 - g++ (MacPorts gcc8 8.2.0_0) 8.2.0
 - g++ -O3 -march=native -Wa,-q -fdiagnostics-color=auto -std=c++2a
