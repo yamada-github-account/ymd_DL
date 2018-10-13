@@ -116,7 +116,31 @@ for(auto&& DataLabel: ymd::zip(data,label)){
 
 
 ** structured binding
+In C++, the all functions can return only a single
+value. Traditionally, we pass the argument by reference and update the
+value, however, from C++11, =std::tuple= can wrap multiple values with
+different types and simulate mutiple returning with
+=std::make_tuple=. The returned value can be accepted with =std::tie=
+which makes a tuple of references to its argument values.
 
+#+BEGIN_SRC C++
+auto F(double a,int b){ return std::make_tuple(a,b); }
+
+int main(){
+  double a;
+  int b;
+
+  std::tie(a,b) = F(0.5,2);
+}
+#+END_SRC
+
+Unfortunately, this requires declaration of values
+beforehand. Moreover, we cannot deduce type by =auto=.
+
+Structured binding (from C++17) can solve this inconvenience.
+#+BEGIN_SRC C++
+auto [a,b] = F(0.5,2);
+#+END_SRC
 
 ** Static Polymorphism
 In usual dynamic polymorphism, pointers to classes derived from a
